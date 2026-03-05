@@ -12,6 +12,24 @@ GRID_SIZE = 150
 
 # MODEL
 grid = np.full((GRID_SIZE, GRID_SIZE), TREE, dtype=int)
+
+rng = np.random.default_rng(42) #seed yung 42
+tree_texture = rng.uniform(0.75, 1.15, size=(GRID_SIZE, GRID_SIZE)) 
+
+def colorTrees(state_grid):
+    palette = np.array([
+        [34, 139, 34],   
+        [255, 140, 0],  
+        [25, 25, 25],      
+    ], dtype=float) / 255.0
+
+    rgb = palette[state_grid]
+    tree_mask = (state_grid == TREE)
+    rgb[tree_mask] = np.clip(rgb[tree_mask] * tree_texture[tree_mask, None], 0, 1) #turnup brightness, clamp to 1
+
+    return rgb
+
+
 # def generate_terrain(height, width, water_prob=0.05):
 #     new_grid = np.full((height, width), TREE, dtype=int)
 
@@ -90,12 +108,12 @@ def simulate(frame, img, grid):
     
     burnt_percentage = ((np.sum(new_grid == ASH) / GRID_SIZE**2)) * 100
     ax.set_xlabel(f'{burnt_percentage:.2f}% of the forest burned down, {100 - burnt_percentage:.2f}% remained unaffected')
-    img.set_data(new_grid)
+    img.set_data(colorTrees(new_grid))
     grid[:] = new_grid[:]
     return img,
 
 fig, ax = plt.subplots()
-img = ax.imshow(grid, cmap=CUSTOM_MAP, interpolation='nearest', vmin=0, vmax=2)
+img = ax.imshow(colorTrees(grid), interpolation='nearest')
 ani = anime.FuncAnimation(fig, simulate, fargs=(img, grid), frames=200, interval=100)
 burnt_percentage = (np.sum(grid == ASH) / (GRID_SIZE**2)) * 100
 
