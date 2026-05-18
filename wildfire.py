@@ -15,7 +15,7 @@ WIND_DIRECTIONS = ['N', 'E', 'W', 'S', 'NE', 'NW', 'SE', 'SW']
 rng = np.random.default_rng(42)
 tree_texture = rng.uniform(0.75, 1.15, size=(GRID_SIZE, GRID_SIZE)) 
 
-def colorTrees(state_grid):
+def colorTrees(state_grid): 
     palette = np.array([[34, 139, 34], [255, 140, 0], [25, 25, 25]], dtype=float) / 255.0
     rgb = palette[state_grid]
     tree_mask = (state_grid == TREE)
