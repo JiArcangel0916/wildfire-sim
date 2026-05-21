@@ -5,8 +5,8 @@ from matplotlib.colors import ListedColormap
 import random
 
 # --- CONSTANTS ---
-TREE, FIRE, ASH = 0, 1, 2
-COLORS = ['forestgreen', 'orange', 'black']
+TREE, FIRE, ASH, WATER = 0, 1, 2, 3
+COLORS = ['forestgreen', 'orange', 'black', 'royalblue'] 
 CUSTOM_MAP = ListedColormap(COLORS) 
 GRID_SIZE = 100 #adjusted para sa better performance
 WIND_DIRECTIONS = ['N', 'E', 'W', 'S', 'NE', 'NW', 'SE', 'SW']
@@ -15,8 +15,29 @@ WIND_DIRECTIONS = ['N', 'E', 'W', 'S', 'NE', 'NW', 'SE', 'SW']
 rng = np.random.default_rng(42)
 tree_texture = rng.uniform(0.75, 1.15, size=(GRID_SIZE, GRID_SIZE)) 
 
+def generate_terrain():
+    new_grid = np.full((GRID_SIZE, GRID_SIZE), TREE, dtype=int)
+    
+    # river
+    center_col = GRID_SIZE // 2
+    for row in range(GRID_SIZE):
+        curve = int(12 * np.sin(row / 10.0))
+        river_center = center_col + curve
+        river_width = 4 
+    
+        new_grid[row, river_center - river_width : river_center + river_width] = WATER
+    return new_grid
+
+BASE_TERRAIN = generate_terrain()
+
 def colorTrees(state_grid): 
-    palette = np.array([[34, 139, 34], [255, 140, 0], [25, 25, 25]], dtype=float) / 255.0
+    palette = np.array([
+        [34, 139, 34], 
+        [255, 140, 0],  
+        [25, 25, 25],  
+        [65, 105, 225] 
+    ], dtype=float) / 255.0
+    
     rgb = palette[state_grid]
     tree_mask = (state_grid == TREE)
     rgb[tree_mask] = np.clip(rgb[tree_mask] * tree_texture[tree_mask, None], 0, 1)
@@ -24,10 +45,13 @@ def colorTrees(state_grid):
 
 
 def run_simulation_logic(spread_p, wind_dir):
-    grid_inner = np.full((GRID_SIZE, GRID_SIZE), TREE, dtype=int)
-    for _ in range(20):
+    grid_inner = BASE_TERRAIN.copy()
+    ignited = 0
+    while ignited < 20:
         r, c = random.randint(1, GRID_SIZE-2), random.randint(1, GRID_SIZE-2)
-        grid_inner[r, c] = FIRE
+        if grid_inner[r, c] == TREE:
+            grid_inner[r, c] = FIRE
+            ignited += 1
 
     while np.any(grid_inner == FIRE):
         new_grid = grid_inner.copy()
@@ -62,11 +86,12 @@ def run_simulation_logic(spread_p, wind_dir):
 
         grid_inner[:] = new_grid[:]
     
-    return (np.sum(grid_inner == ASH) / GRID_SIZE**2) * 100
+    total_trees = np.sum(BASE_TERRAIN == TREE)
+    return (np.sum(grid_inner == ASH) / total_trees) * 100
 
 # --- PSO ALGO ---
 num_particles = 10
-pso_iterations = 15  #defined, can be changed
+pso_iterations = 3  #defined, can be changed
 
 particles = np.random.uniform(0, 1, (num_particles, 2))
 particles[:, 1] *= 7 
@@ -111,10 +136,13 @@ best_wind = WIND_DIRECTIONS[int(round(g_best_pos[1])) % 8]
 print(f"\nOptimization Done! Best params: Spread={best_spread:.2f}, Wind={best_wind}")
 
 
-grid = np.full((GRID_SIZE, GRID_SIZE), TREE, dtype=int)
-for i in range(20):
+grid = BASE_TERRAIN.copy()
+ignited = 0
+while ignited < 20:
     r, c = random.randint(0, GRID_SIZE-1), random.randint(0, GRID_SIZE-1)
-    if grid[r, c] == TREE: grid[r, c] = FIRE
+    if grid[r, c] == TREE:
+        grid[r, c] = FIRE
+        ignited += 1
 
 def simulate_final(frame, img, grid):
     new_grid = grid.copy()
@@ -143,14 +171,15 @@ def simulate_final(frame, img, grid):
                     if wind_force: current_p += best_spread
                     if np.random.random() < current_p: new_grid[row, col] = FIRE
     
-    burnt_pct = (np.sum(new_grid == ASH) / GRID_SIZE**2) * 100
-    ax.set_xlabel(f'{burnt_pct:.2f}% burnt using Optimized Params')
+    total_trees = np.sum(BASE_TERRAIN == TREE)
+    burnt_pct = (np.sum(new_grid == ASH) / total_trees) * 100
+    ax.set_xlabel(f'{burnt_pct:.2f}% of trees burnt using Optimized Params')
     img.set_data(colorTrees(new_grid))
     grid[:] = new_grid[:]
     return img,
 
 fig, ax = plt.subplots()
 img = ax.imshow(colorTrees(grid), interpolation='nearest')
-plt.title(f'Optimized Fire Simulation\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob')
+plt.title(f'Optimized Fire Simulation with River\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob')
 ani = anime.FuncAnimation(fig, simulate_final, fargs=(img, grid), frames=200, interval=50)
 plt.show()
