@@ -8,7 +8,7 @@ import random
 TREE, FIRE, ASH, WATER = 0, 1, 2, 3
 COLORS = ['forestgreen', 'orange', 'black', 'royalblue'] 
 CUSTOM_MAP = ListedColormap(COLORS) 
-GRID_SIZE = 100 #adjusted para sa better performance
+GRID_SIZE = 100 
 WIND_DIRECTIONS = ['N', 'E', 'W', 'S', 'NE', 'NW', 'SE', 'SW']
 
 # MODEL SETUP
@@ -18,13 +18,11 @@ tree_texture = rng.uniform(0.75, 1.15, size=(GRID_SIZE, GRID_SIZE))
 def generate_terrain():
     new_grid = np.full((GRID_SIZE, GRID_SIZE), TREE, dtype=int)
     
-    # river
     center_col = GRID_SIZE // 2
     for row in range(GRID_SIZE):
         curve = int(12 * np.sin(row / 10.0))
         river_center = center_col + curve
         river_width = 4 
-    
         new_grid[row, river_center - river_width : river_center + river_width] = WATER
     return new_grid
 
@@ -32,9 +30,9 @@ BASE_TERRAIN = generate_terrain()
 
 def colorTrees(state_grid): 
     palette = np.array([
-        [34, 139, 34], 
-        [255, 140, 0],  
-        [25, 25, 25],  
+        [34, 139, 34],  
+        [255, 140, 0], 
+        [25, 25, 25],
         [65, 105, 225] 
     ], dtype=float) / 255.0
     
@@ -56,8 +54,6 @@ def run_simulation_logic(spread_p, wind_dir):
     while np.any(grid_inner == FIRE):
         new_grid = grid_inner.copy()
         
-        
-        # --- orig ---
         for row in range(1, GRID_SIZE - 1):
             for col in range(1, GRID_SIZE - 1):
                 if grid_inner[row, col] == FIRE:
@@ -91,7 +87,7 @@ def run_simulation_logic(spread_p, wind_dir):
 
 # --- PSO ALGO ---
 num_particles = 10
-pso_iterations = 3  #defined, can be changed
+pso_iterations = 3 
 
 particles = np.random.uniform(0, 1, (num_particles, 2))
 particles[:, 1] *= 7 
@@ -108,17 +104,14 @@ for i in range(pso_iterations):
         current_wind = WIND_DIRECTIONS[int(round(particles[j, 1])) % 8]
         score = run_simulation_logic(particles[j, 0], current_wind)
         
-        # updating personal best
         if score > p_best_scores[j]:
             p_best_scores[j] = score
             p_best_pos[j] = particles[j].copy()
         
-        # global best
         if score > g_best_score:
             g_best_score = score
             g_best_pos = particles[j].copy()
 
-    # move particles
     for j in range(num_particles):
         r1, r2 = random.random(), random.random()
         velocities[j] = (0.5 * velocities[j] + 
@@ -130,11 +123,9 @@ for i in range(pso_iterations):
     
     print(f"Iteration {i+1}: Current Max Burn Found: {g_best_score:.2f}%")
 
-
 best_spread = g_best_pos[0]
 best_wind = WIND_DIRECTIONS[int(round(g_best_pos[1])) % 8]
 print(f"\nOptimization Done! Best params: Spread={best_spread:.2f}, Wind={best_wind}")
-
 
 grid = BASE_TERRAIN.copy()
 ignited = 0
@@ -158,7 +149,6 @@ def simulate_final(frame, img, grid):
                 if FIRE in tree_neighbors.values():
                     current_p = 0.05
                     wind_force = False
-                    #best wind from pso
                     if best_wind == 'N' and FIRE in [tree_neighbors['S'], tree_neighbors['SW'], tree_neighbors['SE']]:   wind_force = True
                     elif best_wind == 'S' and FIRE in [tree_neighbors['N'], tree_neighbors['NW'], tree_neighbors['NE']]: wind_force = True
                     elif best_wind == 'W' and FIRE in [tree_neighbors['E'], tree_neighbors['NE'], tree_neighbors['SE']]: wind_force = True
@@ -173,13 +163,16 @@ def simulate_final(frame, img, grid):
     
     total_trees = np.sum(BASE_TERRAIN == TREE)
     burnt_pct = (np.sum(new_grid == ASH) / total_trees) * 100
-    ax.set_xlabel(f'{burnt_pct:.2f}% of trees burnt using Optimized Params')
+    ax.set_xlabel(f'{burnt_pct:.2f}% of trees burnt using Optimized Params', color='white', fontweight='bold')
     img.set_data(colorTrees(new_grid))
     grid[:] = new_grid[:]
     return img,
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(facecolor='black')
+ax.set_facecolor('black')
+
 img = ax.imshow(colorTrees(grid), interpolation='nearest')
-plt.title(f'Optimized Fire Simulation with River\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob')
+plt.title(f'Optimized Fire Simulation with River\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob', color='yellow', fontweight='bold')
+ax.tick_params(colors='white')
 ani = anime.FuncAnimation(fig, simulate_final, fargs=(img, grid), frames=200, interval=50)
 plt.show()
