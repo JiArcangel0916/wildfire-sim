@@ -90,7 +90,7 @@ def run_simulation_logic(spread_p, wind_dir):
 
 # --- PSO ALGO ---
 num_particles = 10
-pso_iterations = 3
+pso_iterations = 10
 
 particles = np.random.uniform(0, 1, (num_particles, 2))
 particles[:, 1] *= 7 
