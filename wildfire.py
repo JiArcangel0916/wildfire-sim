@@ -10,6 +10,7 @@ COLORS = ['forestgreen', 'orange', 'black', 'royalblue']
 CUSTOM_MAP = ListedColormap(COLORS) 
 GRID_SIZE = 100 
 WIND_DIRECTIONS = ['N', 'E', 'W', 'S', 'NE', 'NW', 'SE', 'SW']
+AMBIENT_TEMP = 38.0  
 
 # MODEL SETUP
 rng = np.random.default_rng(42)
@@ -66,7 +67,9 @@ def run_simulation_logic(spread_p, wind_dir):
                         'SE': grid_inner[row+1, col+1], 'SW': grid_inner[row+1, col-1]    
                     }
                     if FIRE in tree_neighbors.values():
-                        current_p = 0.05
+                        temp_modifier = max(0.0, (AMBIENT_TEMP - 20.0) * 0.002)
+                        current_p = 0.05 + temp_modifier
+                        
                         wind_force = False
                         if wind_dir == 'N' and FIRE in [tree_neighbors['S'], tree_neighbors['SW'], tree_neighbors['SE']]:   wind_force = True
                         elif wind_dir == 'S' and FIRE in [tree_neighbors['N'], tree_neighbors['NW'], tree_neighbors['NE']]: wind_force = True
@@ -87,7 +90,7 @@ def run_simulation_logic(spread_p, wind_dir):
 
 # --- PSO ALGO ---
 num_particles = 10
-pso_iterations = 3 
+pso_iterations = 3
 
 particles = np.random.uniform(0, 1, (num_particles, 2))
 particles[:, 1] *= 7 
@@ -98,7 +101,7 @@ p_best_scores = np.zeros(num_particles)
 g_best_pos = particles[0].copy()
 g_best_score = -1
 
-print("Running PSO to find worst-case fire scenario...")
+print(f"Running PSO to find worst-case fire scenario at {AMBIENT_TEMP} Celsius...")
 for i in range(pso_iterations):
     for j in range(num_particles):
         current_wind = WIND_DIRECTIONS[int(round(particles[j, 1])) % 8]
@@ -147,7 +150,9 @@ def simulate_final(frame, img, grid):
                     'NE': grid[row-1, col+1], 'NW': grid[row-1, col-1], 'SE': grid[row+1, col+1], 'SW': grid[row+1, col-1]    
                 }
                 if FIRE in tree_neighbors.values():
-                    current_p = 0.05
+                    temp_modifier = max(0.0, (AMBIENT_TEMP - 20.0) * 0.002)
+                    current_p = 0.05 + temp_modifier
+                    
                     wind_force = False
                     if best_wind == 'N' and FIRE in [tree_neighbors['S'], tree_neighbors['SW'], tree_neighbors['SE']]:   wind_force = True
                     elif best_wind == 'S' and FIRE in [tree_neighbors['N'], tree_neighbors['NW'], tree_neighbors['NE']]: wind_force = True
@@ -172,7 +177,7 @@ fig, ax = plt.subplots(facecolor='black')
 ax.set_facecolor('black')
 
 img = ax.imshow(colorTrees(grid), interpolation='nearest')
-plt.title(f'Optimized Fire Simulation with River\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob', color='yellow', fontweight='bold')
+plt.title(f'Optimized Fire Simulation with River ({AMBIENT_TEMP}°C)\nWorst Case: {best_wind} Wind, {best_spread:.2f} Prob', color='yellow', fontweight='bold')
 ax.tick_params(colors='white')
 ani = anime.FuncAnimation(fig, simulate_final, fargs=(img, grid), frames=200, interval=50)
 plt.show()
